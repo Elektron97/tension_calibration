@@ -19,6 +19,7 @@ class_ns                = "/motor_calibrator"
 QUEUE_SIZE              = 10
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
+SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -52,6 +53,7 @@ class Motor_Calibrator:
         self.uncalibrated_motors = [*range(self.n_motors)]
         self.calibrated_motors = []
 
+        self.publish_turns()
         self.draw_motor_from_queue()
     
     def currents_callback(self, msg):
@@ -69,11 +71,24 @@ class Motor_Calibrator:
             if (i == motor_id):
                 if (self.cmd_turns.data[i] >= 0) and (self.cmd_turns.data[i] < self.max_turns):  # [0, MAX_TURNS]
                     self.cmd_turns.data[i] += self.turns_resolution
+                
                 elif (self.cmd_turns.data[i] == DISABLE_TORQUE_REQUEST):
                     self.cmd_turns.data[i] = 0.0
+                
                 elif (self.cmd_turns.data[i] == self.max_turns):
                     rospy.loginfo("Maximum turns reached (%f) of the motor %d", self.cmd_turns.data[i], i)
+
+                    # Turn off all the motors & publish
+                    self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
+                    self.publish_turns()
+                    # wait...
+                    rospy.loginfo("Wait for the rest configuration of the robot...")
+                    rospy.sleep(SLEEP_TIME)
+
+                    # Then draw next motor from the queue
+                    rospy.loginfo("Sleep phase ended. Switch to the next motor.")
                     self.draw_motor_from_queue()
+                
                 else:
                     rospy.logerr("Invalid value of cmd_turn = %f",  self.cmd_turns.data[i])
                     break
