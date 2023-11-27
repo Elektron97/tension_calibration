@@ -24,9 +24,6 @@ SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
 ### Class Definition ###
 class Motor_Calibrator:
     def __init__(self, n_motors):
-        # Timer for Main Loop
-        self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
-
         # Subscriber/Publisher
         self.pub_obj = rospy.Publisher(turns_topic_name, Float32MultiArray, queue_size=QUEUE_SIZE)
         self.sub_obj = rospy.Subscriber(current_topic_name, Float32MultiArray, self.currents_callback)
@@ -48,13 +45,17 @@ class Motor_Calibrator:
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
+        self.publish_turns()
 
         # To Calibrate Motors Queue
         self.uncalibrated_motors = [*range(self.n_motors)]
         self.calibrated_motors = []
 
-        self.publish_turns()
+        # draw motor from the queue
         self.draw_motor_from_queue()
+
+        # Start the Main Loop
+        self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
     def currents_callback(self, msg):
         # Storing currents in the private attribute
@@ -111,5 +112,8 @@ class Motor_Calibrator:
         self.pub_obj.publish(self.cmd_turns)
 
     def main_loop(self, event):
-        self.calibration_single_motor(self.calibrated_motors[-1])
-        self.publish_turns()
+        if (len(self.calibrated_motors) != 0):
+            self.calibration_single_motor(self.calibrated_motors[-1])
+            self.publish_turns()
+        else:
+            pass
