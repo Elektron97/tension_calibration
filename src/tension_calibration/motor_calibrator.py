@@ -12,12 +12,12 @@ import rospy
 from std_msgs.msg import Float32MultiArray
 
 ### Global Variables ###
-turns_topic_name = "/cmd_turns"
-current_topic_name = "/read_currents"
-class_ns = "/motor_calibrator"
-QUEUE_SIZE = 10
-DISABLE_TORQUE_REQUEST = -1
-NODE_FREQUENCY = 1.0    # [Hz]
+turns_topic_name        = "/cmd_turns"
+current_topic_name      = "/read_currents"
+class_ns                = "/motor_calibrator"
+QUEUE_SIZE              = 10
+DISABLE_TORQUE_REQUEST  = -1
+NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -34,7 +34,7 @@ class Motor_Calibrator:
 
         # Calibration Parameters
         self.max_turns = rospy.get_param(class_ns + "/max_turns")
-        self.turns_trial = rospy.get_param(class_ns + "turns_trial")
+        self.turns_trial = rospy.get_param(class_ns + "/turns_trial")
         self.turns_resolution = self.max_turns/self.turns_trial
 
         # Currents storing timeseries
@@ -57,11 +57,16 @@ class Motor_Calibrator:
                 elif (self.cmd_turns == DISABLE_TORQUE_REQUEST):
                     self.cmd_turns.data[i] = 0.0
                 else:
-                    pass # do nothing (for now)
+                    rospy.logerr("Invalid value of cmd_turn, i = %d",  i)
+                    break
 
             # Request Torque Disable for the other motors
             else:
                 self.cmd_turns.data[i] = DISABLE_TORQUE_REQUEST
+    
+    def publish_turns(self):
+        self.pub_obj.publish(self.cmd_turns)
 
     def main_loop(self, event):
         self.calibration_single_motor(0)
+        self.publish_turns()

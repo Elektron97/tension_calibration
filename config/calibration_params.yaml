@@ -1,0 +1,9 @@
+motor_calibrator:
+  # Node params
+  node_frequency: 1.0 # [Hz]
+
+  # calibrator params
+  max_turns: 5.0
+  turns_trial: 10.0
+
+

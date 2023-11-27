@@ -6,9 +6,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
 )
 
+catkin_python_setup()
+
 catkin_package()
 
-include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+catkin_install_python(
+  PROGRAMS scripts/tension_calibrator.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
