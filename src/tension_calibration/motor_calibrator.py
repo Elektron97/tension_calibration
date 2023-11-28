@@ -85,10 +85,16 @@ class Motor_Calibrator:
         # Close the file
         file.close()
 
-    # def current2csv(self):
-    #     new_data = {}
-    #     for i in range(len(self.fieldnames)):
-    #         new_data[self.fieldnames[i]] = 
+    def current2csv(self):
+        new_data = {}
+
+        # Create Dictionary
+        for i in range(len(self.fieldnames)):
+            new_data[self.fieldnames[i]] = self.read_currents.data[i]
+        new_df = pd.DataFrame(new_data)
+
+        # Append the new row to the existing csv file
+        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
 
     def currents_callback(self, msg):
         # Storing currents in the private attribute
