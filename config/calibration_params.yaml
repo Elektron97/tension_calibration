@@ -6,6 +6,6 @@ motor_calibrator:
   max_turns: 5.0
   turns_trial: 10.0
 
-  # Sleep time for rrobot dynamics
+  # Sleep time for robot dynamics
   sleep_time: 10.0  #[s] (ahimè)
 
