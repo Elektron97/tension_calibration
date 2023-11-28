@@ -20,7 +20,7 @@ QUEUE_SIZE              = 10
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
 SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
-MOTOR_INNER_TIME        = 0.1                                               #[s]
+MOTOR_INNER_TIME        = 0.5                                               #[s]
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -82,12 +82,12 @@ class Motor_Calibrator:
 
                     # Turn off all the motors & publish
                     # First initial position
-                    self.cmd_turns.data = [0.0]*self.n_motors
+                    self.cmd_turns.data[i] = 0.0
                     self.publish_turns()
-                    rospy.sleep(MOTOR_INNER_TIME)   # TODO: to tune
+                    rospy.sleep(1/NODE_FREQUENCY)
 
                     # Then disable torque request
-                    self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
+                    self.cmd_turns.data[i] = DISABLE_TORQUE_REQUEST
                     self.publish_turns()
                     # wait...
                     rospy.loginfo("Wait for the rest configuration of the robot...")
