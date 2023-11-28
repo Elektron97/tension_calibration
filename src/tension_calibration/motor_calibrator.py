@@ -13,14 +13,17 @@ import rospy
 from std_msgs.msg import Float32MultiArray
 
 ### Global Variables ###
-turns_topic_name        = "/cmd_turns"
-current_topic_name      = "/read_currents"
+proboscis_ns            = "/proboscis"
+turns_topic_name        = proboscis_ns + "/cmd_turns"
+current_topic_name      = proboscis_ns + "/read_currents"
 class_ns                = "/motor_calibrator"
 QUEUE_SIZE              = 10
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
 SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
 MOTOR_INNER_TIME        = 0.5                                               #[s]
+FLOATING_NUMBER         = 2
+FLOAT_TOLERANCE         = 1e-2
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -38,7 +41,7 @@ class Motor_Calibrator:
         # Calibration Parameters
         self.max_turns = rospy.get_param(class_ns + "/max_turns")
         self.turns_trial = rospy.get_param(class_ns + "/turns_trial")
-        self.turns_resolution = self.max_turns/self.turns_trial
+        self.turns_resolution = np.round(self.max_turns/self.turns_trial, 3)
 
         # Currents storing timeseries
         self.read_currents = Float32MultiArray()
@@ -71,13 +74,13 @@ class Motor_Calibrator:
         for i in range(self.n_motors):
             # Compute the commanded turns for the motor_id-th motor
             if (i == motor_id):
-                if (self.cmd_turns.data[i] >= 0) and (self.cmd_turns.data[i] < self.max_turns):  # [0, MAX_TURNS]
+                if (self.cmd_turns.data[i] >= 0) and (np.round(self.cmd_turns.data[i], FLOATING_NUMBER) < self.max_turns):  # [0, MAX_TURNS]
                     self.cmd_turns.data[i] += self.turns_resolution
                 
                 elif (self.cmd_turns.data[i] == DISABLE_TORQUE_REQUEST):
                     self.cmd_turns.data[i] = 0.0
                 
-                elif (self.cmd_turns.data[i] == self.max_turns):
+                elif (np.round(self.cmd_turns.data[i], FLOATING_NUMBER) == np.round(self.max_turns, FLOATING_NUMBER)):
                     rospy.loginfo("Maximum turns reached (%f) of the motor %d", self.cmd_turns.data[i], i)
 
                     # Turn off all the motors & publish

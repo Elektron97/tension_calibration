@@ -1,10 +1,10 @@
 motor_calibrator:
   # Node params
-  node_frequency: 1.0 # [Hz]
+  node_frequency: 0.5 # [Hz]
 
   # calibrator params
-  max_turns: 5.0
-  turns_trial: 10.0
+  max_turns: 2.0
+  turns_trial: 20
 
   # Sleep time for robot dynamics
   sleep_time: 10.0  #[s] (ahimè)
