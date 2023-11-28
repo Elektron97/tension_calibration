@@ -12,6 +12,10 @@ import numpy as np
 import rospy
 from std_msgs.msg import Float32MultiArray
 
+import os
+import csv
+import pandas as pd
+
 ### Global Variables ###
 proboscis_ns            = "/proboscis"
 turns_topic_name        = proboscis_ns + "/cmd_turns"
@@ -24,6 +28,8 @@ SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
 MOTOR_INNER_TIME        = 0.5                                               #[s]
 FLOATING_NUMBER         = 2
 FLOAT_TOLERANCE         = 1e-2
+PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/tension_calibration"
+CURRENT_CSV_FILENAME    = "/data/current_position.csv"
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -46,6 +52,13 @@ class Motor_Calibrator:
         # Currents storing timeseries
         self.read_currents = Float32MultiArray()
 
+        # Create csv file to store currents
+        self.fieldnames = ['Current ']*self.n_motors
+        for i in range(len(self.fieldnames)):
+            self.fieldnames[i] += str(i + 1)
+        
+        self.init_dataset()
+
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
@@ -61,6 +74,22 @@ class Motor_Calibrator:
         # Start the Main Loop
         self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
+    def init_dataset(self):        
+        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:            
+            # Create writer obj
+            writer = csv.DictWriter(file, fieldnames=self.fieldnames)
+
+            # Create the dataset
+            writer.writeheader()
+
+        # Close the file
+        file.close()
+
+    # def current2csv(self):
+    #     new_data = {}
+    #     for i in range(len(self.fieldnames)):
+    #         new_data[self.fieldnames[i]] = 
+
     def currents_callback(self, msg):
         # Storing currents in the private attribute
         self.read_currents = msg
