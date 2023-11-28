@@ -49,6 +49,10 @@ class Motor_Calibrator:
         self.read_currents = Float32MultiArray()
 
         # Create csv file to store currents
+        self.fieldnames = ['Current ']*self.n_motors
+        for i in range(len(self.fieldnames)):
+            self.fieldnames[i] += str(i + 1)
+        
         self.init_dataset()
 
         # Actual Commanded Turns
@@ -67,22 +71,20 @@ class Motor_Calibrator:
         self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
     def init_dataset(self):        
-        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:
-            # Create the field names
-            fieldnames = ['Current ']*self.n_motors
-            
-            # Add the Motors' index
-            for i in range(len(fieldnames)):
-                fieldnames[i] += str(i + 1)
-            
+        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:            
             # Create writer obj
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer = csv.DictWriter(file, fieldnames=self.fieldnames)
 
             # Create the dataset
             writer.writeheader()
 
         # Close the file
         file.close()
+
+    # def current2csv(self):
+    #     new_data = {}
+    #     for i in range(len(self.fieldnames)):
+    #         new_data[self.fieldnames[i]] = 
 
     def currents_callback(self, msg):
         # Storing currents in the private attribute
