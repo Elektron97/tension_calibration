@@ -95,9 +95,9 @@ class Motor_Calibrator:
 
         # Create Dictionary
         for i in range(len(self.fieldnames)):
-            new_data[self.fieldnames[i]] = self.read_currents.data[i]
+            new_data[self.fieldnames[i]] = [self.read_currents.data[i]]
        
-        new_df = pd.DataFrame(new_data.items())
+        new_df = pd.DataFrame(new_data)
 
         # Append the new row to the existing csv file
         # new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
