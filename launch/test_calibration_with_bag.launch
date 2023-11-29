@@ -6,5 +6,5 @@
     <!-- Tension Calibrator Planner -->
     <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py" output="screen"/>
     <!-- Current Bag -->
-    <node pkg="rosbag" type="play" name="player" args="--clock $(arg bag_path)/2023-11-28-18-42-11.bag"/>
+    <node pkg="rosbag" type="play" name="player" args="--clock $(arg bag_path)/2023-11-28-18-42-11.bag --topic /proboscis/read_currents"/>
 </launch>

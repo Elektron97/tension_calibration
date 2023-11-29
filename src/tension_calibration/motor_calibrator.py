@@ -55,7 +55,7 @@ class Motor_Calibrator:
         self.read_currents = Float32MultiArray()
 
         # Create csv file to store currents
-        self.fieldnames = ['Current ']*self.n_motors
+        self.fieldnames = ['Current']*self.n_motors
         for i in range(len(self.fieldnames)):
             self.fieldnames[i] += str(i + 1)
         
@@ -96,10 +96,11 @@ class Motor_Calibrator:
         # Create Dictionary
         for i in range(len(self.fieldnames)):
             new_data[self.fieldnames[i]] = self.read_currents.data[i]
-        new_df = pd.DataFrame(new_data)
+       
+        new_df = pd.DataFrame(new_data.items())
 
         # Append the new row to the existing csv file
-        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
+        # new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
 
     def currents_callback(self, msg):
         # Increment data counter
