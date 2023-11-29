@@ -29,8 +29,7 @@ MOTOR_INNER_TIME        = 0.5                                               #[s]
 FLOATING_NUMBER         = 2
 FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/tension_calibration"
-CURRENT_CSV_FILENAME    = "/data/current_position.csv"
-DYNAMIXEL_FREQ          = 30.0                                              #[Hz]
+CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 
 ### Class Definition ###
@@ -55,14 +54,18 @@ class Motor_Calibrator:
         self.read_currents = Float32MultiArray()
 
         # Create csv file to store currents
-        self.fieldnames = ['Current ']*self.n_motors
-        for i in range(len(self.fieldnames)):
-            self.fieldnames[i] += str(i + 1)
+        self.current_fieldnames = ['Current']*self.n_motors
+        for i in range(len(self.current_fieldnames)):
+            self.current_fieldnames[i] += str(i + 1)
+        
+        self.turns_fieldnames = ['Turns']*self.n_motors
+        for i in range(len(self.turns_fieldnames)):
+            self.turns_fieldnames[i] += str(i + 1)
         
         self.init_dataset()
 
         # Init time to skip current data
-        self.last_current_time = rospy.get_rostime()
+        self.data_counter = 0
 
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
@@ -76,13 +79,13 @@ class Motor_Calibrator:
         # draw motor from the queue
         self.draw_motor_from_queue()
 
-        # Start the Main Loop
-        self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
+        # Start the Main Loop | Removing for now
+        # self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
-    def init_dataset(self):        
-        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:            
+    def init_dataset(self):
+        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:         
             # Create writer obj
-            writer = csv.DictWriter(file, fieldnames=self.fieldnames)
+            writer = csv.DictWriter(file, fieldnames=self.current_fieldnames + self.turns_fieldnames)
 
             # Create the dataset
             writer.writeheader()
@@ -93,23 +96,33 @@ class Motor_Calibrator:
     def current2csv(self):
         new_data = {}
 
-        # Create Dictionary
-        for i in range(len(self.fieldnames)):
-            new_data[self.fieldnames[i]] = self.read_currents.data[i]
+        ## Create Dictionary ##
+        # Current
+        for i in range(len(self.current_fieldnames)):
+            new_data[self.current_fieldnames[i]] = [self.read_currents.data[i]]
+        
+        # Turns
+        for i in range(len(self.turns_fieldnames)):
+            new_data[self.turns_fieldnames[i]] = [self.cmd_turns.data[i]]
+       
         new_df = pd.DataFrame(new_data)
 
         # Append the new row to the existing csv file
         new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
 
     def currents_callback(self, msg):
-        # Get time
-        msg_time = rospy.get_rostime()
+        # Increment data counter
+        self.data_counter += 1
 
-        if((msg_time - self.last_current_time).to_sec() >  CURRENT_DATA_SKIP/DYNAMIXEL_FREQ):
+        # Wait the CURRENT_DATA_SKIP-th sample
+        if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
             self.current2csv()
-            self.last_current_time = msg_time
+            self.data_counter = 0   # reset to zero the counter
+
+            # Start new position
+            self.state_machine()
 
     def shutdown_callback(self):
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
@@ -167,9 +180,12 @@ class Motor_Calibrator:
     def publish_turns(self):
         self.pub_obj.publish(self.cmd_turns)
 
-    def main_loop(self, event):
+    def state_machine(self):
         if (len(self.calibrated_motors) != 0):
             self.calibration_single_motor(self.calibrated_motors[-1])
             self.publish_turns()
         else:
             pass
+
+    # def main_loop(self, event):
+    #     self.state_machine()
