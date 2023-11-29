@@ -30,6 +30,8 @@ FLOATING_NUMBER         = 2
 FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/tension_calibration"
 CURRENT_CSV_FILENAME    = "/data/current_position.csv"
+DYNAMIXEL_FREQ          = 30.0                                              #[Hz]
+CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "current_data_skip")
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -58,6 +60,9 @@ class Motor_Calibrator:
             self.fieldnames[i] += str(i + 1)
         
         self.init_dataset()
+
+        # Init time to skip current data
+        self.last_current_time = rospy.get_rostime()
 
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
@@ -97,9 +102,15 @@ class Motor_Calibrator:
         new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
 
     def currents_callback(self, msg):
-        # Storing currents in the private attribute
-        self.read_currents = msg
-    
+        # Get time
+        msg_time = rospy.get_rostime()
+
+        if((msg_time - self.last_current_time).to_sec() >  CURRENT_DATA_SKIP/DYNAMIXEL_FREQ):
+            # Storing currents in the private attribute
+            self.read_currents = msg
+            self.current2csv()
+            self.last_current_time = msg_time
+
     def shutdown_callback(self):
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
