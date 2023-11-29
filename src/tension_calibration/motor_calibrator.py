@@ -29,8 +29,7 @@ MOTOR_INNER_TIME        = 0.5                                               #[s]
 FLOATING_NUMBER         = 2
 FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/tension_calibration"
-CURRENT_CSV_FILENAME    = "/data/current_position.csv"
-DYNAMIXEL_FREQ          = 30.0                                              #[Hz]
+CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 
 ### Class Definition ###
@@ -55,9 +54,13 @@ class Motor_Calibrator:
         self.read_currents = Float32MultiArray()
 
         # Create csv file to store currents
-        self.fieldnames = ['Current']*self.n_motors
-        for i in range(len(self.fieldnames)):
-            self.fieldnames[i] += str(i + 1)
+        self.current_fieldnames = ['Current']*self.n_motors
+        for i in range(len(self.current_fieldnames)):
+            self.current_fieldnames[i] += str(i + 1)
+        
+        self.turns_fieldnames = ['Turns']*self.n_motors
+        for i in range(len(self.turns_fieldnames)):
+            self.turns_fieldnames[i] += str(i + 1)
         
         self.init_dataset()
 
@@ -79,10 +82,10 @@ class Motor_Calibrator:
         # Start the Main Loop | Removing for now
         # self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
-    def init_dataset(self):        
-        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:            
+    def init_dataset(self):
+        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:         
             # Create writer obj
-            writer = csv.DictWriter(file, fieldnames=self.fieldnames)
+            writer = csv.DictWriter(file, fieldnames=self.current_fieldnames + self.turns_fieldnames)
 
             # Create the dataset
             writer.writeheader()
@@ -93,14 +96,19 @@ class Motor_Calibrator:
     def current2csv(self):
         new_data = {}
 
-        # Create Dictionary
-        for i in range(len(self.fieldnames)):
-            new_data[self.fieldnames[i]] = [self.read_currents.data[i]]
+        ## Create Dictionary ##
+        # Current
+        for i in range(len(self.current_fieldnames)):
+            new_data[self.current_fieldnames[i]] = [self.read_currents.data[i]]
+        
+        # Turns
+        for i in range(len(self.turns_fieldnames)):
+            new_data[self.turns_fieldnames[i]] = [self.cmd_turns.data[i]]
        
         new_df = pd.DataFrame(new_data)
 
         # Append the new row to the existing csv file
-        # new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
+        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
 
     def currents_callback(self, msg):
         # Increment data counter
