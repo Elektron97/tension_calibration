@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="bag_path" default="$(env HOME)/bagfiles"/>
+    <!-- Load Params from YAML -->
+    <rosparam command="load" file="$(find tension_calibration)/config/calibration_params.yaml"/>
+    <!-- Tension Calibrator Planner -->
+    <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py" output="screen"/>
+    <!-- Current Bag -->
+    <node pkg="rosbag" type="play" name="player" args="--clock $(arg bag_path)/2023-11-28-18-42-11.bag"/>
+</launch>
