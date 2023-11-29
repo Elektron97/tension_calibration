@@ -76,8 +76,8 @@ class Motor_Calibrator:
         # draw motor from the queue
         self.draw_motor_from_queue()
 
-        # Start the Main Loop
-        self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
+        # Start the Main Loop | Removing for now
+        # self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
     def init_dataset(self):        
         with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:            
@@ -111,6 +111,9 @@ class Motor_Calibrator:
             self.read_currents = msg
             self.current2csv()
             self.data_counter = 0   # reset to zero the counter
+
+            # Start new position
+            self.state_machine()
 
     def shutdown_callback(self):
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
@@ -168,9 +171,12 @@ class Motor_Calibrator:
     def publish_turns(self):
         self.pub_obj.publish(self.cmd_turns)
 
-    def main_loop(self, event):
+    def state_machine(self):
         if (len(self.calibrated_motors) != 0):
             self.calibration_single_motor(self.calibrated_motors[-1])
             self.publish_turns()
         else:
             pass
+
+    # def main_loop(self, event):
+    #     self.state_machine()
