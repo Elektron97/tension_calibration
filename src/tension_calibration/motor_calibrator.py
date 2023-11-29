@@ -62,7 +62,7 @@ class Motor_Calibrator:
         self.init_dataset()
 
         # Init time to skip current data
-        self.last_current_time = rospy.get_rostime()
+        self.data_counter = 0
 
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
@@ -102,14 +102,15 @@ class Motor_Calibrator:
         new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
 
     def currents_callback(self, msg):
-        # Get time
-        msg_time = rospy.get_rostime()
+        # Increment data counter
+        self.data_counter += 1
 
-        if((msg_time - self.last_current_time).to_sec() >  CURRENT_DATA_SKIP/DYNAMIXEL_FREQ):
+        # Wait the CURRENT_DATA_SKIP-th sample
+        if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
             self.current2csv()
-            self.last_current_time = msg_time
+            self.data_counter = 0   # reset to zero the counter
 
     def shutdown_callback(self):
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
