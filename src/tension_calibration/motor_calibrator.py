@@ -31,7 +31,7 @@ FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/tension_calibration"
 CURRENT_CSV_FILENAME    = "/data/current_position.csv"
 DYNAMIXEL_FREQ          = 30.0                                              #[Hz]
-CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "current_data_skip")
+CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 
 ### Class Definition ###
 class Motor_Calibrator:
