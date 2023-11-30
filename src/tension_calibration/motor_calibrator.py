@@ -78,9 +78,6 @@ class Motor_Calibrator:
 
         # draw motor from the queue
         self.draw_motor_from_queue()
-
-        # Start the Main Loop | Removing for now
-        # self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
     def init_dataset(self):
         with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:         
@@ -130,7 +127,6 @@ class Motor_Calibrator:
             
         except CSVError:
             rospy.logerr("Invalid CSV File. The expected number of columns is %f", 2*self.n_motors)
-
 
     def currents_callback(self, msg):
         # Increment data counter
@@ -208,9 +204,6 @@ class Motor_Calibrator:
             self.publish_turns()
         else:
             pass
-
-    # def main_loop(self, event):
-    #     self.state_machine()
 
 ## Exception Classes ##
 class CSVError(Exception):
