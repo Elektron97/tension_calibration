@@ -5,5 +5,5 @@
     <!-- Tension Calibrator Planner -->
     <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py"/>
     <!-- Motor I/O Node -->
-    <node name="motor_io" pkg="proboscis_dyna_io" type="motor_io"/>    
+    <include file="$(find proboscis_dyna_io)/launch/motor_io.launch"/>    
 </launch>
