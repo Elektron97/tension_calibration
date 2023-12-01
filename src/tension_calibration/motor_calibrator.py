@@ -28,7 +28,7 @@ SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
 MOTOR_INNER_TIME        = 0.5                                               #[s]
 FLOATING_NUMBER         = 2
 FLOAT_TOLERANCE         = 1e-2
-PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/tension_calibration"
+PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/proboscis_full/tension_calibration"
 CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 
