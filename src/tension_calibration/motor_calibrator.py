@@ -146,7 +146,7 @@ class Motor_Calibrator:
                     # First initial position
                     self.cmd_turns.data[i] = 0.0
                     self.publish_turns()
-                    rospy.sleep(1/NODE_FREQUENCY)
+                    rospy.sleep(SLEEP_TIME)
 
                     # Then disable torque request
                     self.cmd_turns.data[i] = DISABLE_TORQUE_REQUEST
