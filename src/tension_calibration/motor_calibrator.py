@@ -116,11 +116,12 @@ class Motor_Calibrator:
                 # Number of samples
                 n_samples = current_position_data.shape[0]
 
-                # Compute d i(t) / d p(t)
-                # self.derivatives = [] 
+                # Define Matrix that collects the derivatives
+                self.derivatives_matrix = np.zeros((n_samples - 1, self.n_motors))
 
                 for i in range(n_samples - 1):
-                    # self.derivatives[i] = (current_position_data)/()
+                    # Compute Derivative
+                    # self.derivatives_matrix[i, :] = current_position_data 
                     pass
             else:
                 raise CSVError()
