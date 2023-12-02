@@ -31,6 +31,7 @@ FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/proboscis_full/tension_calibration"
 CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
+BROKEN_MOTOR_ID         = 5
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -66,16 +67,18 @@ class Motor_Calibrator:
 
         # Init time to skip current data
         self.data_counter = 0
+        
+        # To Calibrate Motors Queue
+        self.uncalibrated_motors = [*range(self.n_motors)]
+        # Until Motor 5 is fixed
+        self.uncalibrated_motors.remove(BROKEN_MOTOR_ID - 1)
+        self.calibrated_motors = []
 
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
         self.publish_turns()
         rospy.sleep(1/NODE_FREQUENCY)
-
-        # To Calibrate Motors Queue
-        self.uncalibrated_motors = [*range(self.n_motors)]
-        self.calibrated_motors = []
 
         # draw motor from the queue
         self.draw_motor_from_queue()
@@ -168,7 +171,7 @@ class Motor_Calibrator:
                     # First initial position
                     self.cmd_turns.data[i] = 0.0
                     self.publish_turns()
-                    rospy.sleep(1/NODE_FREQUENCY)
+                    rospy.sleep(SLEEP_TIME)
 
                     # Then disable torque request
                     self.cmd_turns.data[i] = DISABLE_TORQUE_REQUEST
