@@ -71,6 +71,7 @@ class Motor_Calibrator:
         self.cmd_turns = Float32MultiArray()
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
         self.publish_turns()
+        rospy.sleep(1/NODE_FREQUENCY)
 
         # To Calibrate Motors Queue
         self.uncalibrated_motors = [*range(self.n_motors)]
@@ -137,11 +138,13 @@ class Motor_Calibrator:
         if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
-            self.current2csv()
+            # self.current2csv()    # DEBUG
             self.data_counter = 0   # reset to zero the counter
 
             # Start new position
             self.state_machine()
+        else:
+            pass
 
     def shutdown_callback(self):
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
@@ -165,7 +168,7 @@ class Motor_Calibrator:
                     # First initial position
                     self.cmd_turns.data[i] = 0.0
                     self.publish_turns()
-                    rospy.sleep(SLEEP_TIME)
+                    rospy.sleep(1/NODE_FREQUENCY)
 
                     # Then disable torque request
                     self.cmd_turns.data[i] = DISABLE_TORQUE_REQUEST
