@@ -9,4 +9,4 @@ motor_calibrator:
   # Sleep time for robot dynamics
   sleep_time: 10.0  #[s] (ahimè)
 
-  current_data_skip: 3  # discard 3 samples
+  current_data_skip: 30  # discard samples
