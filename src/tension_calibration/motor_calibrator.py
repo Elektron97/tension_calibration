@@ -78,9 +78,6 @@ class Motor_Calibrator:
 
         # draw motor from the queue
         self.draw_motor_from_queue()
-
-        # Start the Main Loop | Removing for now
-        # self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
     
     def init_dataset(self):
         with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:         
@@ -108,7 +105,29 @@ class Motor_Calibrator:
         new_df = pd.DataFrame(new_data)
 
         # Append the new row to the existing csv file
-        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)        
+        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)
+
+    def compute_coeffs(self):
+        # Load csv file
+        current_position_data = pd.read_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME)
+
+        try:
+            if current_position_data.shape[1] == 2*self.n_motors:
+                # Number of samples
+                n_samples = current_position_data.shape[0]
+
+                # Define Matrix that collects the derivatives
+                self.derivatives_matrix = np.zeros((n_samples - 1, self.n_motors))
+
+                for i in range(n_samples - 1):
+                    # Compute Derivative
+                    # self.derivatives_matrix[i, :] = current_position_data 
+                    pass
+            else:
+                raise CSVError()
+            
+        except CSVError:
+            rospy.logerr("Invalid CSV File. The expected number of columns is %f", 2*self.n_motors)
 
     def currents_callback(self, msg):
         # Increment data counter
@@ -187,5 +206,6 @@ class Motor_Calibrator:
         else:
             pass
 
-    # def main_loop(self, event):
-    #     self.state_machine()
+## Exception Classes ##
+class CSVError(Exception):
+    pass
