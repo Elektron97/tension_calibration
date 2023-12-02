@@ -21,7 +21,7 @@ proboscis_ns            = "/proboscis"
 turns_topic_name        = proboscis_ns + "/cmd_turns"
 current_topic_name      = proboscis_ns + "/read_currents"
 class_ns                = "/motor_calibrator"
-QUEUE_SIZE              = 10
+QUEUE_SIZE              = 1
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
 SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
@@ -209,6 +209,7 @@ class Motor_Calibrator:
         if (len(self.calibrated_motors) != 0):
             self.calibration_single_motor(self.calibrated_motors[-1])
             self.publish_turns()
+            rospy.sleep(1/NODE_FREQUENCY)
         else:
             pass
 
