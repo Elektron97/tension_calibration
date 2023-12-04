@@ -21,7 +21,7 @@ proboscis_ns            = "/proboscis"
 turns_topic_name        = proboscis_ns + "/cmd_turns"
 current_topic_name      = proboscis_ns + "/read_currents"
 class_ns                = "/motor_calibrator"
-QUEUE_SIZE              = 10
+QUEUE_SIZE              = 1
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
 SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
@@ -31,6 +31,7 @@ FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/proboscis_full/tension_calibration"
 CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
+BROKEN_MOTOR_ID         = 5
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -66,15 +67,18 @@ class Motor_Calibrator:
 
         # Init time to skip current data
         self.data_counter = 0
+        
+        # To Calibrate Motors Queue
+        self.uncalibrated_motors = [*range(self.n_motors)]
+        # Until Motor 5 is fixed
+        self.uncalibrated_motors.remove(BROKEN_MOTOR_ID - 1)
+        self.calibrated_motors = []
 
         # Actual Commanded Turns
         self.cmd_turns = Float32MultiArray()
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
         self.publish_turns()
-
-        # To Calibrate Motors Queue
-        self.uncalibrated_motors = [*range(self.n_motors)]
-        self.calibrated_motors = []
+        rospy.sleep(1/NODE_FREQUENCY)
 
         # draw motor from the queue
         self.draw_motor_from_queue()
@@ -137,11 +141,13 @@ class Motor_Calibrator:
         if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
-            self.current2csv()
+            # self.current2csv()    # DEBUG
             self.data_counter = 0   # reset to zero the counter
 
             # Start new position
             self.state_machine()
+        else:
+            pass
 
     def shutdown_callback(self):
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
@@ -203,6 +209,7 @@ class Motor_Calibrator:
         if (len(self.calibrated_motors) != 0):
             self.calibration_single_motor(self.calibrated_motors[-1])
             self.publish_turns()
+            rospy.sleep(1/NODE_FREQUENCY)
         else:
             pass
 

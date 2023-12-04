@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
 <launch>
+    <arg name="bag_path" default="$(env HOME)/bagfiles/proboscis_calibration"/>
     <!-- Include Calibration launch File -->
     <include file="$(find tension_calibration)/launch/calibration.launch"/>
     <!-- Launch Camera Node -->
     <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
     <!-- Record Experiment -->
-    <node pkg="rosbag" type="record" name="experiment_recorder" args="record -o calibration 
+    <node pkg="rosbag" type="record" name="experiment_recorder" args="record -o $(arg bag_path)/calibration 
                                                                                 /proboscis/cmd_turns 
                                                                                 /proboscis/read_currents
                                                                                 /camera/color/image_raw
