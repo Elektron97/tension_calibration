@@ -9,6 +9,5 @@
     <node pkg="rosbag" type="record" name="experiment_recorder" args="record -o $(arg bag_path)/calibration 
                                                                                 /proboscis/cmd_turns 
                                                                                 /proboscis/read_currents
-                                                                                /camera/color/image_raw
-                                                                                /camera/color/image_raw/theora"/>
+                                                                                /camera/color/image_raw"/>
 </launch>
