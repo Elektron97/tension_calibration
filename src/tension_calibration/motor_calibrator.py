@@ -151,7 +151,7 @@ class Motor_Calibrator:
         if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
-            # self.current2csv()    # DEBUG
+            self.current2csv()
             self.data_counter = 0   # reset to zero the counter
 
             # Start new position
@@ -160,6 +160,10 @@ class Motor_Calibrator:
             pass
 
     def shutdown_callback(self):
+        # Compute Derivatives
+        self.compute_coeffs()
+
+        # Turn OFF Motors
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
         self.publish_turns()
