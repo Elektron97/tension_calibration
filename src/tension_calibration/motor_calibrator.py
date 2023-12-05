@@ -5,7 +5,7 @@
 # This algorithm try to be agnostic on motors' type/model, using            #
 # the modularity of ROS. The output of the class is a timeseries of         #
 # ROS topic (std_msgs/Float32MultiArray) of the n° of turns.                #
-#If the n° of turns is equal to -1, it does means to turn off the motor.    #
+# If the n° of turns is equal to -1, it does means to turn off the motor.   #
 #############################################################################
 
 import numpy as np
@@ -15,6 +15,7 @@ from std_msgs.msg import Float32MultiArray
 import os
 import csv
 import pandas as pd
+import matplotlib.pyplot as plt
 
 ### Global Variables ###
 proboscis_ns            = "/proboscis"
@@ -123,10 +124,19 @@ class Motor_Calibrator:
                 # Define Matrix that collects the derivatives
                 self.derivatives_matrix = np.zeros((n_samples - 1, self.n_motors))
 
+                # Compute Derivative
                 for i in range(n_samples - 1):
-                    # Compute Derivative
-                    # self.derivatives_matrix[i, :] = current_position_data 
-                    pass
+                    # For each motor
+                    for j in range(self.n_motors):
+                        if ((current_position_data.loc[i + 1, self.turns_fieldnames[j]] - current_position_data.loc[i, self.turns_fieldnames[j]]) == 0):
+                            rospy.logwarn("Impossible to compute derivative. The denominator is equal to 0.") 
+                        else:
+                            self.derivatives_matrix[i, j] = (current_position_data.loc[i + 1, self.current_fieldnames[j]] - current_position_data.loc[i, self.current_fieldnames[j]])/((current_position_data.loc[i + 1, self.turns_fieldnames[j]] - current_position_data.loc[i, self.turns_fieldnames[j]]))
+                # Plot Derivative TimeSeries
+                fig, ax = plt.subplots()
+                ax.plot(range(n_samples - 1), self.derivatives_matrix[:, 1])
+                plt.show()
+
             else:
                 raise CSVError()
             
