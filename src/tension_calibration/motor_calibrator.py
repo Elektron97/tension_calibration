@@ -33,6 +33,7 @@ PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/proboscis_fu
 CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 BROKEN_MOTOR_ID         = 5
+MEAN_SAMPLES            = rospy.get_param(class_ns + "/mean_sample")
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -111,6 +112,23 @@ class Motor_Calibrator:
 
         # Append the new row to the existing csv file
         new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)
+    
+    def average_current2csv(self, mean_current):
+        new_data = {}
+
+        ## Create Dictionary ##
+        # Current
+        for i in range(len(self.current_fieldnames)):
+            new_data[self.current_fieldnames[i]] = [mean_current[i]]
+        
+        # Turns
+        for i in range(len(self.turns_fieldnames)):
+            new_data[self.turns_fieldnames[i]] = [self.cmd_turns.data[i]]
+       
+        new_df = pd.DataFrame(new_data)
+
+        # Append the new row to the existing csv file
+        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)
 
     def compute_coeffs(self):
         # Load csv file
@@ -151,11 +169,17 @@ class Motor_Calibrator:
         if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
-            self.current2csv()
-            self.data_counter = 0   # reset to zero the counter
+            current_samples = []
 
-            # Start new position
-            self.state_machine()
+            if(self.data_counter < MEAN_SAMPLES + CURRENT_DATA_SKIP):
+                # Collect Samples in a list only of the active motor
+                current_samples.append(self.read_currents.data[self.calibrated_motors[-1]])
+            else:
+                # Save in the .csv file the average value of the MEAN_SAMPLES collected
+                self.average_current2csv(sum(current_samples)/len(current_samples))
+                self.data_counter = 0   # reset to zero the counter
+                # Start new position
+                self.state_machine()
         else:
             pass
 
