@@ -184,13 +184,13 @@ class Motor_Calibrator:
             pass
 
     def shutdown_callback(self):
-        # Compute Derivatives
-        self.compute_coeffs()
-
         # Turn OFF Motors
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
         self.publish_turns()
+
+        # Compute Derivatives
+        self.compute_coeffs()
 
     def calibration_single_motor(self, motor_id):
         for i in range(self.n_motors):

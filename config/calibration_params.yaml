@@ -10,4 +10,4 @@ motor_calibrator:
   sleep_time: 10.0  #[s] (ahimè)
 
   current_data_skip: 30  # discard samples
-  mean_sample: 20
+  mean_sample: 30
