@@ -81,6 +81,9 @@ class Motor_Calibrator:
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
         self.publish_turns()
         rospy.sleep(1/NODE_FREQUENCY)
+        
+        # List to collect current data and compute average value
+        self.current_samples = []
 
         # draw motor from the queue
         self.draw_motor_from_queue()
@@ -162,22 +165,36 @@ class Motor_Calibrator:
             rospy.logerr("Invalid CSV File. The expected number of columns is %f", 2*self.n_motors)
 
     def currents_callback(self, msg):
-        # Increment data counter
-        self.data_counter += 1
+        if (len(self.calibrated_motors) != 0):
+            # Increment data counter only when the algorithm is started
+            self.data_counter += 1
 
         # Wait the CURRENT_DATA_SKIP-th sample
         if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
-            current_samples = []
 
             if(self.data_counter < MEAN_SAMPLES + CURRENT_DATA_SKIP):
                 # Collect Samples in a list only of the active motor
-                current_samples.append(self.read_currents.data[self.calibrated_motors[-1]])
+                self.current_samples.append(self.read_currents.data[self.calibrated_motors[-1]])
             else:
-                # Save in the .csv file the average value of the MEAN_SAMPLES collected
-                self.average_current2csv(sum(current_samples)/len(current_samples))
-                self.data_counter = 0   # reset to zero the counter
+                if(len(self.current_samples) != 0):
+                    # Save in the .csv file the average value of the MEAN_SAMPLES collected
+                    average_current = sum(self.current_samples)/len(self.current_samples)
+                    print(average_current)
+
+                    csv_current = list(self.read_currents.data)
+                    csv_current[self.calibrated_motors[-1]] = average_current
+                    self.average_current2csv(csv_current)
+                else:
+                    rospy.logerr("current_samples list is empty!")
+                    rospy.signal_shutdown("Error: The node not collect data.")
+                    
+                
+                # reset to zero the counter & list
+                self.data_counter = 0
+                self.current_samples = []
+                
                 # Start new position
                 self.state_machine()
         else:
