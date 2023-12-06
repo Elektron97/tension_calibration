@@ -13,6 +13,7 @@ import rospy
 from std_msgs.msg import Float32MultiArray
 
 import os
+import matplotlib.pyplot as plt
 
 ### Global Variables ###
 proboscis_ns            = "/proboscis"
@@ -111,18 +112,23 @@ class Motor_Calibrator:
         else:
             pass
 
-    def save2csv(self):
-        # Define Fieldnames for the dictionary
-        current_fieldnames = ['Current']*self.n_motors
-        for i in range(self.n_motors):
-            current_fieldnames[i] += str(i + 1)
-        
-        turns_fieldnames = ['Turns']*self.n_motors
-        for i in range(self.n_motors):
-            turns_fieldnames[i] += str(i + 1)
+    def plot_data(self):
+        # Only for Debug
+        plt.figure()
 
-        # Debug:
-        print(self.current_data)
+        for i in range(self.current_data.shape[1]):
+            plt.plot(self.current_data[:, i], label=f'Motor {i+1}')
+        
+        # Figure Properties
+        plt.title('Currents')
+        plt.xlabel('Indeces')
+        plt.ylabel('Current [A]')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def compute_lines(self):
+        pass
 
     def shutdown_callback(self):
         # Turn OFF Motors
@@ -130,8 +136,8 @@ class Motor_Calibrator:
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
         self.publish_turns()
 
-        # Debug
-        self.save2csv()
+        # Debug: Plot timeseries
+        self.plot_data()
 
     def calibration_single_motor(self, motor_id):
         for i in range(self.n_motors):
