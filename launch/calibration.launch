@@ -3,7 +3,7 @@
     <!-- Load Params from YAML -->
     <rosparam command="load" file="$(find tension_calibration)/config/calibration_params.yaml"/>
     <!-- Tension Calibrator Planner -->
-    <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py"/>
+    <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py" output="screen"/>
     <!-- Motor I/O Node -->
     <include file="$(find proboscis_dyna_io)/launch/motor_io.launch"/>
 </launch>

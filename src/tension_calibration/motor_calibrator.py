@@ -13,8 +13,6 @@ import rospy
 from std_msgs.msg import Float32MultiArray
 
 import os
-import csv
-import pandas as pd
 import matplotlib.pyplot as plt
 
 ### Global Variables ###
@@ -33,14 +31,13 @@ PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/proboscis_fu
 CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 BROKEN_MOTOR_ID         = 5
+MEAN_SAMPLES            = rospy.get_param(class_ns + "/mean_sample")
 
 ### Class Definition ###
 class Motor_Calibrator:
     def __init__(self, n_motors):
-        # Subscriber/Publisher
+        # Publisher
         self.pub_obj = rospy.Publisher(turns_topic_name, Float32MultiArray, queue_size=QUEUE_SIZE)
-        self.sub_obj = rospy.Subscriber(current_topic_name, Float32MultiArray, self.currents_callback)
-
         # Shutdown Callback
         rospy.on_shutdown(self.shutdown_callback)
         
@@ -54,17 +51,6 @@ class Motor_Calibrator:
 
         # Currents storing timeseries
         self.read_currents = Float32MultiArray()
-
-        # Create csv file to store currents
-        self.current_fieldnames = ['Current']*self.n_motors
-        for i in range(len(self.current_fieldnames)):
-            self.current_fieldnames[i] += str(i + 1)
-        
-        self.turns_fieldnames = ['Turns']*self.n_motors
-        for i in range(len(self.turns_fieldnames)):
-            self.turns_fieldnames[i] += str(i + 1)
-        
-        self.init_dataset()
 
         # Init time to skip current data
         self.data_counter = 0
@@ -80,68 +66,15 @@ class Motor_Calibrator:
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors    # Init to zeros
         self.publish_turns()
         rospy.sleep(1/NODE_FREQUENCY)
+        
+        # List to collect current data and compute average value
+        self.current_data = np.empty((0, self.n_motors))
+        self.current_samples = np.empty((0, self.n_motors))
 
         # draw motor from the queue
         self.draw_motor_from_queue()
-    
-    def init_dataset(self):
-        with open(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='w', newline='') as file:         
-            # Create writer obj
-            writer = csv.DictWriter(file, fieldnames=self.current_fieldnames + self.turns_fieldnames)
-
-            # Create the dataset
-            writer.writeheader()
-
-        # Close the file
-        file.close()
-
-    def current2csv(self):
-        new_data = {}
-
-        ## Create Dictionary ##
-        # Current
-        for i in range(len(self.current_fieldnames)):
-            new_data[self.current_fieldnames[i]] = [self.read_currents.data[i]]
-        
-        # Turns
-        for i in range(len(self.turns_fieldnames)):
-            new_data[self.turns_fieldnames[i]] = [self.cmd_turns.data[i]]
-       
-        new_df = pd.DataFrame(new_data)
-
-        # Append the new row to the existing csv file
-        new_df.to_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME, mode='a', index=False, header=False)
-
-    def compute_coeffs(self):
-        # Load csv file
-        current_position_data = pd.read_csv(PACKAGE_PATH + CURRENT_CSV_FILENAME)
-
-        try:
-            if current_position_data.shape[1] == 2*self.n_motors:
-                # Number of samples
-                n_samples = current_position_data.shape[0]
-
-                # Define Matrix that collects the derivatives
-                self.derivatives_matrix = np.zeros((n_samples - 1, self.n_motors))
-
-                # Compute Derivative
-                for i in range(n_samples - 1):
-                    # For each motor
-                    for j in range(self.n_motors):
-                        if ((current_position_data.loc[i + 1, self.turns_fieldnames[j]] - current_position_data.loc[i, self.turns_fieldnames[j]]) == 0):
-                            rospy.logwarn("Impossible to compute derivative. The denominator is equal to 0.") 
-                        else:
-                            self.derivatives_matrix[i, j] = (current_position_data.loc[i + 1, self.current_fieldnames[j]] - current_position_data.loc[i, self.current_fieldnames[j]])/((current_position_data.loc[i + 1, self.turns_fieldnames[j]] - current_position_data.loc[i, self.turns_fieldnames[j]]))
-                # Plot Derivative TimeSeries
-                fig, ax = plt.subplots()
-                ax.plot(range(n_samples - 1), self.derivatives_matrix[:, 1])
-                plt.show()
-
-            else:
-                raise CSVError()
-            
-        except CSVError:
-            rospy.logerr("Invalid CSV File. The expected number of columns is %f", 2*self.n_motors)
+        # Subscriber
+        self.sub_obj = rospy.Subscriber(current_topic_name, Float32MultiArray, self.currents_callback)
 
     def currents_callback(self, msg):
         # Increment data counter
@@ -151,18 +84,60 @@ class Motor_Calibrator:
         if(self.data_counter >  CURRENT_DATA_SKIP):
             # Storing currents in the private attribute
             self.read_currents = msg
-            # self.current2csv()    # DEBUG
-            self.data_counter = 0   # reset to zero the counter
 
-            # Start new position
-            self.state_machine()
+            if(self.data_counter < MEAN_SAMPLES + CURRENT_DATA_SKIP):
+                # Collect Samples in a list only of the active motor
+                self.current_samples = np.vstack((self.current_samples, list(self.read_currents.data)))
+            else:
+                if(len(self.current_samples) != 0):
+                    # Compute Average Current for each motor
+                    average_currents = []
+                    for i in range(self.n_motors):
+                        average_currents.append(np.sum(self.current_samples[:, i])/len(self.current_samples[:, i]))
+
+                    # Then save in the dataset
+                    self.current_data = np.vstack((self.current_data, average_currents))
+
+                else:
+                    rospy.logerr("current_samples list is empty!")
+                    rospy.signal_shutdown("Error: The node not collect data.")
+                    
+                
+                # reset to zero the counter & list
+                self.data_counter = 0
+                self.current_samples = np.empty((0, self.n_motors))
+                
+                # Start new position
+                self.state_machine()
         else:
             pass
 
+    def plot_data(self):
+        # Only for Debug
+        plt.figure()
+
+        for i in range(self.current_data.shape[1]):
+            plt.plot(self.current_data[:, i], label=f'Motor {i+1}')
+        
+        # Figure Properties
+        plt.title('Currents')
+        plt.xlabel('Indeces')
+        plt.ylabel('Current [A]')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def compute_lines(self):
+        pass
+
     def shutdown_callback(self):
+        # Turn OFF Motors
         rospy.logwarn("Calibration terminated. Killing the node and turn off the motors.")
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
         self.publish_turns()
+
+        # Debug: Plot timeseries
+        self.plot_data()
 
     def calibration_single_motor(self, motor_id):
         for i in range(self.n_motors):
@@ -175,7 +150,7 @@ class Motor_Calibrator:
                     self.cmd_turns.data[i] = 0.0
                 
                 elif (np.round(self.cmd_turns.data[i], FLOATING_NUMBER) == np.round(self.max_turns, FLOATING_NUMBER)):
-                    rospy.loginfo("Maximum turns reached (%f) of the motor %d", self.cmd_turns.data[i], i)
+                    rospy.loginfo("Maximum turns reached (%f) of the motor %d", self.cmd_turns.data[i], i + 1)
 
                     # Turn off all the motors & publish
                     # First initial position
@@ -222,7 +197,3 @@ class Motor_Calibrator:
             rospy.sleep(1/NODE_FREQUENCY)
         else:
             pass
-
-## Exception Classes ##
-class CSVError(Exception):
-    pass
