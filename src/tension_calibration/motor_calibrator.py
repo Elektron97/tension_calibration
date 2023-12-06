@@ -67,8 +67,8 @@ class Motor_Calibrator:
         rospy.sleep(1/NODE_FREQUENCY)
         
         # List to collect current data and compute average value
-        self.current_data = np.array([])
-        self.current_samples = np.array([])
+        self.current_data = np.empty((0, self.n_motors))
+        self.current_samples = np.empty((0, self.n_motors))
 
         # draw motor from the queue
         self.draw_motor_from_queue()
@@ -86,16 +86,16 @@ class Motor_Calibrator:
 
             if(self.data_counter < MEAN_SAMPLES + CURRENT_DATA_SKIP):
                 # Collect Samples in a list only of the active motor
-                self.current_samples = np.vstack([self.current_samples, list(self.read_currents.data)])
+                self.current_samples = np.vstack((self.current_samples, list(self.read_currents.data)))
             else:
                 if(len(self.current_samples) != 0):
                     # Compute Average Current for each motor
                     average_currents = []
-                    for i in range(len(self.n_motors)):
-                        average_currents[i] = np.sum(self.current_samples[:, i])/len(self.current_samples[:, i])
+                    for i in range(self.n_motors):
+                        average_currents.append(np.sum(self.current_samples[:, i])/len(self.current_samples[:, i]))
 
                     # Then save in the dataset
-                    self.current_data = np.vstack(self.current_data, average_currents)
+                    self.current_data = np.vstack((self.current_data, average_currents))
 
                 else:
                     rospy.logerr("current_samples list is empty!")
@@ -104,7 +104,7 @@ class Motor_Calibrator:
                 
                 # reset to zero the counter & list
                 self.data_counter = 0
-                self.current_samples = np.array([])
+                self.current_samples = np.empty((0, self.n_motors))
                 
                 # Start new position
                 self.state_machine()
@@ -144,7 +144,7 @@ class Motor_Calibrator:
                     self.cmd_turns.data[i] = 0.0
                 
                 elif (np.round(self.cmd_turns.data[i], FLOATING_NUMBER) == np.round(self.max_turns, FLOATING_NUMBER)):
-                    rospy.loginfo("Maximum turns reached (%f) of the motor %d", self.cmd_turns.data[i], i)
+                    rospy.loginfo("Maximum turns reached (%f) of the motor %d", self.cmd_turns.data[i], i + 1)
 
                     # Turn off all the motors & publish
                     # First initial position
