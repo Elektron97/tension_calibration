@@ -87,16 +87,23 @@ class Motor_Calibrator:
 
             if(self.data_counter < MEAN_SAMPLES + CURRENT_DATA_SKIP):
                 # Collect Samples in a list only of the active motor
-                self.current_samples = np.vstack((self.current_samples, list(self.read_currents.data)))
+                self.current_samples = np.vstack((self.current_samples, np.array(self.read_currents.data)))
+
             else:
-                if(len(self.current_samples) != 0):
+                if(self.current_samples.shape[0] != 0):
                     # Compute Average Current for each motor
                     average_currents = []
                     for i in range(self.n_motors):
-                        average_currents.append(np.sum(self.current_samples[:, i])/len(self.current_samples[:, i]))
+                        average_currents.append(np.mean(self.current_samples[:, i]))
 
                     # Then save in the dataset
-                    self.current_data = np.vstack((self.current_data, average_currents))
+                    self.current_data = np.vstack((self.current_data, np.array(average_currents)))
+                    
+                    # # Debugs
+                    print("average currents")
+                    print(average_currents)
+                    print("Last row of current_data")
+                    print(self.current_data[-1, :])
 
                 else:
                     rospy.logerr("current_samples list is empty!")
@@ -116,8 +123,8 @@ class Motor_Calibrator:
         # Only for Debug
         plt.figure()
 
-        for i in range(self.current_data.shape[1]):
-            plt.plot(self.current_data[:, i], label=f'Motor {i+1}')
+        for i in range(self.n_motors):
+            plt.plot(range(self.current_data.shape[0]), self.current_data[:, i], label=f'Motor {i+1}')
         
         # Figure Properties
         plt.title('Currents')
