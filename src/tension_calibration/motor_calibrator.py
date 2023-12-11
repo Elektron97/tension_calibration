@@ -50,7 +50,7 @@ class Motor_Calibrator:
         self.turns_resolution = np.round(self.max_turns/self.turns_trial, 3)
 
         # Currents storing timeseries
-        self.read_currents = Float32MultiArray()
+        # self.read_currents = Float32MultiArray()
 
         # Init time to skip current data
         self.data_counter = 0
@@ -68,8 +68,7 @@ class Motor_Calibrator:
         rospy.sleep(1/NODE_FREQUENCY)
         
         # List to collect current data and compute average value
-        self.current_data = np.empty((0, self.n_motors))        # Init with an empty list [] not an empty numpy array 
-        self.current_samples = np.empty((0, self.n_motors))
+        self.current_data = []
 
         ## Issue about np.empty ##
         # Using np.empty, constraining the list to be a numpy object, 
@@ -83,58 +82,21 @@ class Motor_Calibrator:
     def currents_callback(self, msg):
         # Increment data counter
         self.data_counter += 1
+        self.current_data.append(list(msg.data))
 
-        # Wait the CURRENT_DATA_SKIP-th sample
-        if(self.data_counter >  CURRENT_DATA_SKIP):
-            # Storing currents in the private attribute
-            self.read_currents = msg
-
-            if(self.data_counter < MEAN_SAMPLES + CURRENT_DATA_SKIP):
-                # Collect Samples in a list only of the active motor
-                self.current_samples = np.vstack((self.current_samples, np.array(self.read_currents.data)))     # .append()
-
-            else:
-                if(self.current_samples.shape[0] != 0):     # if not -> is_empty() not using .shape()
-                # if not self.current_samples:  # better in this way
-                    # Compute Average Current for each motor
-                    average_currents = []
-                    for i in range(self.n_motors):
-                        average_currents.append(np.mean(self.current_samples[:, i]))
-                    
-                    # average_currents = np.mean(numpy_array_che_contiene_i_valori, axis = 1)
-
-                    # Try:
-                    # average_currents = np.
-
-                    # Then save in the dataset
-                    self.current_data = np.vstack((self.current_data, np.array(average_currents)))
-                    
-                    # # Debugs
-                    # print("average currents")
-                    # print(average_currents)
-                    # print("Last row of current_data")
-                    # print(self.current_data[-1, :])
-
-                else:
-                    rospy.logerr("current_samples list is empty!")
-                    rospy.signal_shutdown("Error: The node not collect data.")
-                    
-                
-                # reset to zero the counter & list
-                self.data_counter = 0
-                self.current_samples = np.empty((0, self.n_motors))     # []
-                
-                # Start new position
-                self.state_machine()
-        else:
-            pass
+        # Wait for the (MEAN_SAMPLES + CURRENT_DATA_SKIP)-sample
+        if(self.data_counter > MEAN_SAMPLES + CURRENT_DATA_SKIP):    
+            # reset to zero the counter & list
+            self.data_counter = 0
+            # Start new position
+            self.state_machine()
 
     def plot_data(self):
         # Only for Debug
         plt.figure()
 
         for i in range(self.n_motors):
-            plt.plot(range(self.current_data.shape[0]), self.current_data[:, i], label=f'Motor {i+1}')
+            plt.plot(range(len(self.current_data)), self.current_data[:, i], label=f'Motor {i+1}')
         
         # Figure Properties
         plt.title('Currents')
@@ -145,7 +107,7 @@ class Motor_Calibrator:
         plt.show()
 
     def save2csv(self):
-        file_path = PACKAGE_PATH + 'test.csv'
+        file_path = PACKAGE_PATH + '/' + 'test.csv'
         # Save the NumPy array to a CSV file
         np.savetxt(file_path, self.current_data, delimiter=',')
 
@@ -158,7 +120,9 @@ class Motor_Calibrator:
         self.cmd_turns.data = [DISABLE_TORQUE_REQUEST]*self.n_motors
         self.publish_turns()
 
-        # Debug: Plot timeseries
+        ## Debug: Plot timeseries ##
+        # Convert in numpy array
+        self.current_data = np.array(self.current_data)
         self.save2csv()
         self.plot_data()
 
@@ -201,20 +165,22 @@ class Motor_Calibrator:
                 self.cmd_turns.data[i] = DISABLE_TORQUE_REQUEST
     
     def draw_motor_from_queue(self):
-        if len(self.uncalibrated_motors) != 0:
+        # if there are uncalibrated motors
+        if self.uncalibrated_motors:
             rand_idx = np.random.randint(len(self.uncalibrated_motors))
             # Add at the bottom the result
             self.calibrated_motors.append(self.uncalibrated_motors[rand_idx])
             # Then remove from the queue the motor
             self.uncalibrated_motors.pop(rand_idx)
         else:
-            rospy.signal_shutdown("Node terminated.")
+        # rospy.signal_shutdown("Node terminated.") 
+            pass
 
     def publish_turns(self):
         self.pub_obj.publish(self.cmd_turns)
 
     def state_machine(self):
-        if (len(self.calibrated_motors) != 0):
+        if self.calibrated_motors:
             self.calibration_single_motor(self.calibrated_motors[-1])
             self.publish_turns()
             rospy.sleep(1/NODE_FREQUENCY)
