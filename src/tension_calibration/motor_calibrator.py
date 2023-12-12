@@ -89,14 +89,14 @@ class Motor_Calibrator:
             # reset to zero the counter & list
             self.data_counter = 0
             # Start new position
-            self.state_machine()
+            # self.state_machine()
 
-    def plot_data(self):
+    def plot_data(self, np_array):
         # Only for Debug
         plt.figure()
 
         for i in range(self.n_motors):
-            plt.plot(range(len(self.current_data)), self.current_data[:, i], label=f'Motor {i+1}')
+            plt.plot(range(len(np_array)), np_array[:, i], label=f'Motor {i+1}')
         
         # Figure Properties
         plt.title('Currents')
@@ -106,10 +106,10 @@ class Motor_Calibrator:
         plt.grid(True)
         plt.show()
 
-    def save2csv(self):
+    def save2csv(self, np_array):
         file_path = PACKAGE_PATH + '/' + 'test.csv'
         # Save the NumPy array to a CSV file
-        np.savetxt(file_path, self.current_data, delimiter=',')
+        np.savetxt(file_path, np_array, delimiter=',')
 
     def compute_lines(self):
         pass
@@ -122,9 +122,9 @@ class Motor_Calibrator:
 
         ## Debug: Plot timeseries ##
         # Convert in numpy array
-        self.current_data = np.array(self.current_data)
-        self.save2csv()
-        self.plot_data()
+        current_ds = np.array(self.current_data)
+        self.save2csv(current_ds)
+        self.plot_data(current_ds)
 
     def calibration_single_motor(self, motor_id):
         for i in range(self.n_motors):
@@ -173,8 +173,8 @@ class Motor_Calibrator:
             # Then remove from the queue the motor
             self.uncalibrated_motors.pop(rand_idx)
         else:
-        # rospy.signal_shutdown("Node terminated.") 
-            pass
+            # rospy.signal_shutdown("Node terminated.")
+            pass 
 
     def publish_turns(self):
         self.pub_obj.publish(self.cmd_turns)
