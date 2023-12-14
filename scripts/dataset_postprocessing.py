@@ -8,16 +8,19 @@ import os
 import numpy as np
 from numpy import genfromtxt
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 
 CSV_PATH = os.path.expanduser('~') + "/catkin_ws/src/proboscis_full/tension_calibration" + "/data/current_turns.csv"
 N_MOTORS = 7
 DISABLE_TORQUE_REQUEST = -1.0
 MAX_TURN = 2.0
 N_TRIAL = 20
+POLY_ORDER = 2
 
-def plot_csv(np_array):
+def plot_csv(np_array, figure_id):
     # Only for Debug
-    plt.figure()
+    plt.figure(figure_id)
 
     for i in range(N_MOTORS):
         plt.plot(range(len(np_array)), np_array[:, i], label=f'Motor {i+1}')
@@ -28,7 +31,6 @@ def plot_csv(np_array):
     plt.ylabel('Current [A]')
     plt.legend()
     plt.grid(True)
-    plt.show()
 
 def find_window(np_array, motor_id):
     # Find the window of the specific motor
@@ -61,6 +63,7 @@ def compute_derivatives(ds):
 
 def main():
     dataset = genfromtxt(CSV_PATH, delimiter=',')
+    # plot_csv(dataset, 1)
 
     # Extract Window and compute Mean
     for i in range(N_MOTORS):
@@ -68,8 +71,25 @@ def main():
             # Select and Filter the Window
             filtered_dataset = find_window(dataset, i)
 
-            plt.figure()
-            plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}') 
+            # Create Figure
+            plt.figure(2)
+            plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}', color='#0070c0')
+
+            # Linear Regression
+            x = filtered_dataset[:, 0].reshape((-1, 1))
+            y = filtered_dataset[:, 1]
+            model = LinearRegression().fit(x, y)
+
+            plt.plot(filtered_dataset[:, 0], model.predict(x), label=f'Lin. Regression of Motor {i+1}', color='#e55934')
+
+            poly_regr = PolynomialFeatures(degree = POLY_ORDER, include_bias=False)
+            X_poly = poly_regr.fit_transform(x)
+            model2 = LinearRegression().fit(X_poly, y)
+
+            # print(model2.predict(X_poly))
+            plt.plot(x, model2.predict(X_poly), label=f'Pol. Regression of Motor {i+1}', color='#72a98f')
+
+            plt.figure(2)
             plt.title('Currents respect to Position')
             plt.xlabel('[n° turns]')
             plt.ylabel('[A]')
@@ -77,19 +97,17 @@ def main():
             plt.grid(True)
             plt.show()
 
-            # Compute Derivatives
-            derivatives = compute_derivatives(filtered_dataset)
-
-            plt.figure()
-            plt.plot(range(len(derivatives)), derivatives, label=f'Motor {i+1}') 
-            plt.title('Derivative of Currents respect to Position')
-            plt.xlabel('Indeces')
-            plt.ylabel('[A]/[n° turns]')
-            plt.legend()
-            plt.grid(True)
-            plt.show()
         else:
             continue
+    
+    # plt.figure(2)
+    # plt.title('Currents respect to Position')
+    # plt.xlabel('[n° turns]')
+    # plt.ylabel('[A]')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
+
 
 if __name__ == "__main__":
     main()
