@@ -20,7 +20,7 @@ proboscis_ns            = "/proboscis"
 turns_topic_name        = proboscis_ns + "/cmd_turns"
 current_topic_name      = proboscis_ns + "/read_currents"
 class_ns                = "/motor_calibrator"
-QUEUE_SIZE              = 1
+QUEUE_SIZE              = 10000
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
 SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
@@ -89,7 +89,7 @@ class Motor_Calibrator:
             # reset to zero the counter & list
             self.data_counter = 0
             # Start new position
-            # self.state_machine()
+            self.state_machine()
 
     def plot_data(self, np_array):
         # Only for Debug
@@ -173,8 +173,7 @@ class Motor_Calibrator:
             # Then remove from the queue the motor
             self.uncalibrated_motors.pop(rand_idx)
         else:
-            # rospy.signal_shutdown("Node terminated.")
-            pass 
+            rospy.signal_shutdown("Node terminated.")
 
     def publish_turns(self):
         self.pub_obj.publish(self.cmd_turns)
