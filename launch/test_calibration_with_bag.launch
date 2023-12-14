@@ -5,7 +5,7 @@
     <!-- Load Params from YAML -->
     <rosparam command="load" file="$(find tension_calibration)/config/calibration_params.yaml"/>
     <!-- Tension Calibrator Planner -->
-    <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py" output="screen"/>
+    <node name="tension_calibrator" pkg="tension_calibration" type="tension_calibrator.py" output="screen" required="true"/>
     <!-- Current Bag -->
-    <node pkg="rosbag" type="play" name="player" args="--clock $(arg bag_path)/$(arg bag_name).bag --topic /proboscis/read_currents"/>
+    <node pkg="rosbag" type="play" name="player" args="--clock $(arg bag_path)/$(arg bag_name).bag --topic /proboscis/read_currents" required="true"/>
 </launch>
