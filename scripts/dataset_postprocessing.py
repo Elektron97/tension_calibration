@@ -53,10 +53,10 @@ def find_window(np_array, motor_id):
     return np.array(filtered_dataset)
 
 def compute_derivatives(ds):
-    derivatives = []
+    derivatives = [0.0]
 
-    for i in range(ds.shape[0] - 1):
-        derivatives.append((ds[i + 1, 1] - ds[i, 1])/(ds[i + 1, 0] - ds[i, 0]))
+    for i in range(1, ds.shape[0]):
+        derivatives.append((ds[i, 1] - ds[i - 1, 1])/(ds[i, 0] - ds[i - 1, 0]))
     return np.array(derivatives)
 
 def main():
@@ -65,7 +65,20 @@ def main():
     # Extract Window and compute Mean
     for i in range(N_MOTORS):
         if not i == 4:
-            derivatives = compute_derivatives(find_window(dataset, i))
+            # Select and Filter the Window
+            filtered_dataset = find_window(dataset, i)
+
+            plt.figure()
+            plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}') 
+            plt.title('Currents respect to Position')
+            plt.xlabel('[n° turns]')
+            plt.ylabel('[A]')
+            plt.legend()
+            plt.grid(True)
+            plt.show()
+
+            # Compute Derivatives
+            derivatives = compute_derivatives(filtered_dataset)
 
             plt.figure()
             plt.plot(range(len(derivatives)), derivatives, label=f'Motor {i+1}') 
