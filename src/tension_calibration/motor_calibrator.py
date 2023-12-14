@@ -91,10 +91,10 @@ class Motor_Calibrator:
         if self.sub_req:
             # Increment data counter
             self.data_counter += 1
-            self.current_data.append(list(msg.data))
+            self.current_data.append(list(msg.data) + self.cmd_turns.data)
 
             # Wait for the (MEAN_SAMPLES + CURRENT_DATA_SKIP)-sample
-            if(self.data_counter > MEAN_SAMPLES + CURRENT_DATA_SKIP):    
+            if(self.data_counter > MEAN_SAMPLES + CURRENT_DATA_SKIP):
                 # reset to zero the counter & list
                 self.data_counter = 0
                 # Wait for the publishing
