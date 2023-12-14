@@ -23,15 +23,22 @@ class_ns                = "/motor_calibrator"
 QUEUE_SIZE              = 1
 DISABLE_TORQUE_REQUEST  = -1
 NODE_FREQUENCY          = rospy.get_param(class_ns + "/node_frequency")    # [Hz]
-SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")
-MOTOR_INNER_TIME        = 0.5                                               #[s]
+SLEEP_TIME              = rospy.get_param(class_ns + "/sleep_time")                                             #[s]
 FLOATING_NUMBER         = 2
-FLOAT_TOLERANCE         = 1e-2
 PACKAGE_PATH            = os.path.expanduser('~') + "/catkin_ws/src/proboscis_full/tension_calibration"
 CURRENT_CSV_FILENAME    = "/data/current_turns.csv"
 CURRENT_DATA_SKIP       = rospy.get_param(class_ns + "/current_data_skip")
 BROKEN_MOTOR_ID         = 5
 MEAN_SAMPLES            = rospy.get_param(class_ns + "/mean_sample")
+
+"""
+Idea of the algorithm: 
+The ROS Node is structured in 2 parts:
+- 1. Callback that save the raw data in a .csv file;
+- 2. Main Loop that periodically publish the commanded turns, using a state machine function.
+
+After that, a shutdown_callback will be called, analyzing the csv file. [UNDER DEVELOP]
+"""
 
 ### Class Definition ###
 class Motor_Calibrator:
@@ -48,9 +55,6 @@ class Motor_Calibrator:
         self.max_turns = rospy.get_param(class_ns + "/max_turns")
         self.turns_trial = rospy.get_param(class_ns + "/turns_trial")
         self.turns_resolution = np.round(self.max_turns/self.turns_trial, 3)
-
-        # Currents storing timeseries
-        # self.read_currents = Float32MultiArray()
 
         # Init time to skip current data
         self.data_counter = 0
@@ -70,26 +74,39 @@ class Motor_Calibrator:
         # List to collect current data and compute average value
         self.current_data = []
 
-        ## Issue about np.empty ##
-        # Using np.empty, constraining the list to be a numpy object, 
-        # is not good in python.
-
         # draw motor from the queue
         self.draw_motor_from_queue()
+
+        # Publish and Subscribe request
+        self.pub_req = False
+        self.sub_req = True
+
+        ## Define Callbacks
         # Subscriber
         self.sub_obj = rospy.Subscriber(current_topic_name, Float32MultiArray, self.currents_callback)
+        # Main Loop
+        self.timer_obj = rospy.Timer(rospy.Duration(1/NODE_FREQUENCY), self.main_loop)
 
     def currents_callback(self, msg):
-        # Increment data counter
-        self.data_counter += 1
-        self.current_data.append(list(msg.data))
+        if self.sub_req:
+            # Increment data counter
+            self.data_counter += 1
+            self.current_data.append(list(msg.data))
 
-        # Wait for the (MEAN_SAMPLES + CURRENT_DATA_SKIP)-sample
-        if(self.data_counter > MEAN_SAMPLES + CURRENT_DATA_SKIP):    
-            # reset to zero the counter & list
-            self.data_counter = 0
-            # Start new position
-            # self.state_machine()
+            # Wait for the (MEAN_SAMPLES + CURRENT_DATA_SKIP)-sample
+            if(self.data_counter > MEAN_SAMPLES + CURRENT_DATA_SKIP):    
+                # reset to zero the counter & list
+                self.data_counter = 0
+                # Wait for the publishing
+                self.sub_req = False
+                self.pub_req = True
+
+    def main_loop(self, event):
+        # Next step only if there are enough samples
+        if self.pub_req:
+            self.state_machine()
+            self.sub_req = True
+            self.pub_req = False
 
     def plot_data(self, np_array):
         # Only for Debug
@@ -107,7 +124,7 @@ class Motor_Calibrator:
         plt.show()
 
     def save2csv(self, np_array):
-        file_path = PACKAGE_PATH + '/' + 'test.csv'
+        file_path = PACKAGE_PATH + CURRENT_CSV_FILENAME
         # Save the NumPy array to a CSV file
         np.savetxt(file_path, np_array, delimiter=',')
 
@@ -173,7 +190,7 @@ class Motor_Calibrator:
             # Then remove from the queue the motor
             self.uncalibrated_motors.pop(rand_idx)
         else:
-            # rospy.signal_shutdown("Node terminated.")
+            rospy.signal_shutdown("Node terminated.")
             pass 
 
     def publish_turns(self):
@@ -183,6 +200,3 @@ class Motor_Calibrator:
         if self.calibrated_motors:
             self.calibration_single_motor(self.calibrated_motors[-1])
             self.publish_turns()
-            rospy.sleep(1/NODE_FREQUENCY)
-        else:
-            pass
