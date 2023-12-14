@@ -17,6 +17,7 @@ DISABLE_TORQUE_REQUEST = -1.0
 MAX_TURN = 2.0
 N_TRIAL = 20
 POLY_ORDER = 2
+LOAD_FREE_CURRENT_THRESHOLD = 0.01
 
 def plot_csv(np_array, figure_id):
     # Only for Debug
@@ -65,6 +66,8 @@ def main():
     dataset = genfromtxt(CSV_PATH, delimiter=',')
     # plot_csv(dataset, 1)
 
+    pretensioned_turns = []
+
     # Extract Window and compute Mean
     for i in range(N_MOTORS):
         if not i == 4:
@@ -73,40 +76,70 @@ def main():
 
             # Create Figure
             plt.figure(2)
-            plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}', color='#0070c0')
+            plt.scatter(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}', color='C' + str(i))
+            # plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}', color='C' + str(i), dashes=[6, 2])
 
-            # Linear Regression
-            x = filtered_dataset[:, 0].reshape((-1, 1))
-            y = filtered_dataset[:, 1]
-            model = LinearRegression().fit(x, y)
+            # Set to Zero the load-free current
+            load_free_idx = np.abs(filtered_dataset[:, 1]) < LOAD_FREE_CURRENT_THRESHOLD
+            filtered_dataset[load_free_idx, 1] = 0.0
+            pretensioned_idx = np.argmin(load_free_idx)
 
-            plt.plot(filtered_dataset[:, 0], model.predict(x), label=f'Lin. Regression of Motor {i+1}', color='#e55934')
+            # NaN if the current is always under threshold
+            if not filtered_dataset[pretensioned_idx, 0]:
+                pretensioned_turns.append(np.nan)
+            else:
+                pretensioned_turns.append(filtered_dataset[pretensioned_idx, 0])
+
+            # plt.scatter(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}', color='C' + str(i))
+            # plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], label=f'Motor {i+1}', color='C' + str(i), dashes=[6, 2])
+            # plt.plot(filtered_dataset[np.logical_not(load_free_idx), 0], 
+            #          filtered_dataset[np.logical_not(load_free_idx), 1], 
+            #          label=f'Motor {i+1}', color='C' + str(i), dashes=[6, 2])
+
+            if not pretensioned_idx == 0:
+                plt.plot(np.insert(filtered_dataset[np.logical_not(load_free_idx), 0], 0, filtered_dataset[pretensioned_idx - 1, 0]), 
+                         np.insert(filtered_dataset[np.logical_not(load_free_idx), 1], 0, filtered_dataset[pretensioned_idx - 1, 1]), 
+                         label=f'Motor {i+1}', color='C' + str(i), dashes=[6, 2])
+                x = np.insert(filtered_dataset[np.logical_not(load_free_idx), 0], 0, filtered_dataset[pretensioned_idx - 1, 0]).reshape((-1, 1))
+                y = np.insert(filtered_dataset[np.logical_not(load_free_idx), 1], 0, filtered_dataset[pretensioned_idx - 1, 1])
+            else:
+                plt.plot(filtered_dataset[:, 0], filtered_dataset[:, 1], 
+                         label=f'Motor {i+1}', color='C' + str(i), 
+                         dashes=[6, 2])
+                x = filtered_dataset[:, 0].reshape((-1, 1))
+                y = filtered_dataset[:, 1]
 
             poly_regr = PolynomialFeatures(degree = POLY_ORDER, include_bias=False)
             X_poly = poly_regr.fit_transform(x)
             model2 = LinearRegression().fit(X_poly, y)
 
-            # print(model2.predict(X_poly))
-            plt.plot(x, model2.predict(X_poly), label=f'Pol. Regression of Motor {i+1}', color='#72a98f')
+            plt.plot(x, model2.predict(X_poly), label=f'Pol. Regression of Motor {i+1}', color='C' + str(i), linewidth=2.0)
 
-            plt.figure(2)
-            plt.title('Currents respect to Position')
-            plt.xlabel('[n° turns]')
-            plt.ylabel('[A]')
-            plt.legend()
-            plt.grid(True)
-            plt.show()
+            # # plt.figure(2)
+            # # plt.title('Currents respect to Position')
+            # # plt.xlabel('[n° turns]')
+            # # plt.ylabel('[A]')
+            # # plt.legend()
+            # # plt.grid(True)
+            # # plt.show()
 
         else:
             continue
-    
-    # plt.figure(2)
-    # plt.title('Currents respect to Position')
-    # plt.xlabel('[n° turns]')
-    # plt.ylabel('[A]')
-    # plt.legend()
-    # plt.grid(True)
-    # plt.show()
+
+    # Print Pretensioned Turns
+    print("Pretensioned Turns for each Motor:")
+    print(pretensioned_turns)
+
+    plt.figure(2)
+    # Add LOAD_FREE_CURRENT_THRESHOLD in the plot
+    plt.plot(filtered_dataset[:, 0], [LOAD_FREE_CURRENT_THRESHOLD]*filtered_dataset.shape[0], color='k')
+    plt.plot(filtered_dataset[:, 0], [-LOAD_FREE_CURRENT_THRESHOLD]*filtered_dataset.shape[0], color='k')
+    plt.title('Currents respect to Position')
+    plt.xlabel('[n° turns]')
+    plt.ylabel('[A]')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
 if __name__ == "__main__":
